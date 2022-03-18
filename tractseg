@@ -1,3 +1,4 @@
+#! /bin/sh
 # use TractSeg to segment region-of-interest tracts 
 
 # load required modules
