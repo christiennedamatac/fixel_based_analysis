@@ -1,3 +1,4 @@
+#! /bin/sh
 # numbered steps correspond with https://mrtrix.readthedocs.io/en/dev/fixel_based_analysis/mt_fibre_density_cross-section.html
 # data should already be pre-processed before this point
 
