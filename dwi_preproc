@@ -1,0 +1,54 @@
+#! /bin/sh
+# mrtrix dwi preprocessing pipeline  
+# https://mrtrix.readthedocs.io/en/latest/fixel_based_analysis/mt_fibre_density_cross-section.html
+
+module load mrtrix
+module load ANTs
+rm -r /project/3022043.01/DELTA/3T/dwi_prep/tmpscripts
+mkdir /project/3022043.01/DELTA/3T/dwi_prep/tmpscripts 
+subject_list=`cat /project/3022028.02/fba_delta/subject_list.txt`
+
+for subject in $subject_list;do
+echo $subject
+source_folder=/project/3022043.01/DELTA/3T/converted/study/$subject/ses-mri01/dwi
+output_folder=/project/3022043.01/DELTA/3T/dwi_prep/$subject
+fieldmap_folder=/project/3022043.01/DELTA/3T/converted/study/$subject/ses-mri01/fmap
+mkdir -p $output_folder
+
+#1. Convert diffusion data
+command_1="mrconvert $source_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.nii.gz $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.mif -fslgrad $source_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.bvec $source_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.bval -force"
+
+#2. Perform dwidenoise
+command_2="dwidenoise $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_denoised.mif -force"
+
+#3. Perform mrdegibbs
+command_3="mrdegibbs $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_denoised.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_degibbs.mif -force"
+
+#4. Create B0 pair for distortion correction
+command_4="mrconvert $fieldmap_folder/${subject}_ses-mri01_acq-diffusion_run-1_epi.nii.gz $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_epi_inv.mif -force"
+command_5="dwiextract -bzero $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi.mif - | mrmath -axis 3 - mean $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_b0.mif -force"
+command_6="dwiextract -bzero $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_epi_inv.mif - | mrmath -axis 3 - mean $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_epi_inv_b0.mif -force"
+command_7="mrcat -axis 3 $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_b0.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_epi_inv.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_b0pair.mif -force"
+
+#5. Run dwipreproc
+command_8="dwipreproc $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_degibbs.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_geomcorr.mif -pe_dir AP -rpe_pair -se_epi $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_b0pair.mif -tempdir $output_folder -force"
+
+#6. Remove bias field
+command_9="dwibiascorrect -ants $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_geomcorr.mif $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_biascorr.mif -bias $output_folder/${subject}_ses-mri01_acq-diffusion_run-1_dwi_bias.mif -tempdir $output_folder -force"
+
+#Submit to batch
+  echo "Submitting to batch..."
+  scriptname="/project/3022043.01/DELTA/3T/dwi_prep/tmpscripts/mrtrix_script$RANDOM"
+  echo "$command_1" > $scriptname
+  echo "$command_2" >> $scriptname
+  echo "$command_3" >> $scriptname
+  echo "$command_3" >> $scriptname
+  echo "$command_4" >> $scriptname
+  echo "$command_5" >> $scriptname
+  echo "$command_6" >> $scriptname
+  echo "$command_7" >> $scriptname
+  echo "$command_8" >> $scriptname
+  echo "$command_9" >> $scriptname
+  chmod a+rwx $scriptname
+qsub -V -l walltime=18:00:00,mem=20gb $scriptname
+done
