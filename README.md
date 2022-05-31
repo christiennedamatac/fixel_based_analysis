@@ -1,1 +1,1 @@
-These are scripts used for the analyses in the pre-print: https://www.biorxiv.org/content/10.1101/2021.11.19.469248v2 
+These scripts were used for analyses published in "Longitudinal changes of ADHD symptoms in association with white matter microstructure: A tract-specific fixel-based analysis" (https://www.sciencedirect.com/science/article/pii/S221315822200122X).
